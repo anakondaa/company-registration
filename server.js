@@ -140,7 +140,7 @@ async function sendSubmissionEmail(data) {
     await axios.post('https://api.brevo.com/v3/smtp/email', {
       sender: { 
         name: 'Company Registration',
-        email: 'no-reply@hotitours.com'
+        email: 'anduelhoti59@gmail.com'
       },
       to: [
         { email: 'info@felixclarke.com' },
