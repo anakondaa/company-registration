@@ -87,6 +87,94 @@ app.post('/create-payment-intent', async (req, res) => {
   }
 });
 
+async function sendSubmissionEmail(data) {
+  const emailContent = `
+    NEW UK COMPANY REGISTRATION
+    ===========================
+
+    COMPANY DETAILS:
+    - Company Name: ${data.companyName}
+    - Company Type: ${data.companyType || 'Private company limited by shares'}
+    - SIC Codes: ${data.sic_codes || 'N/A'}
+    
+    REGISTERED OFFICE ADDRESS:
+    ${data.address_line1 || 'N/A'}
+    ${data.address_line2 || ''}
+    ${data.city || 'N/A'}, ${data.county || ''}
+    ${data.postcode || 'N/A'}
+    ${data.country || 'United Kingdom'}
+
+    DIRECTORS:
+    ${data.directors ? JSON.stringify(data.directors, null, 2) : 'N/A'}
+
+    SHAREHOLDERS:
+    ${data.shareholders ? JSON.stringify(data.shareholders, null, 2) : 'N/A'}
+    Total Share Capital: ${data.total_share_capital || 'N/A'}
+
+    PERSONS WITH SIGNIFICANT CONTROL (PSC):
+    ${data.pscs ? JSON.stringify(data.pscs, null, 2) : 'N/A'}
+
+    CONTACT INFORMATION:
+    - Email: ${data.contact_email || data.email}
+    - Phone: ${data.contact_phone || 'N/A'}
+
+    ARTICLES OF ASSOCIATION:
+    ${data.articles_type || 'Model Articles'}
+    
+    PAYMENT:
+    - Amount: £114.00
+    - Payment ID: ${data.payment_id || 'N/A'}
+    
+    Submitted at: ${new Date().toISOString()}
+  `;
+
+  try {
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { 
+        name: 'Company Registration',
+        email: 'anduelhoti59@gmail.com'
+      },
+      to: [
+        { email: 'info@felixclarke.com' },
+        { email: 'anduelhoti59@gmail.com' }
+      ],
+      subject: `New Company Registration: ${data.companyName}`,
+      textContent: emailContent
+    }, {
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('Email sent successfully via Brevo API. Message ID:', response.data.messageId);
+  } catch (error) {
+    console.error('Email sending error:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+
+// SIC Code Search Endpoint
+const sicCodes = require('./sic-codes.json');
+
+app.get('/api/sic-codes/search', (req, res) => {
+  const query = req.query.q?.toLowerCase() || '';
+  
+  if (!query || query.length < 2) {
+    return res.json([]);
+  }
+
+  const results = sicCodes
+    .filter(sic => 
+      sic.code.includes(query) || 
+      sic.description.toLowerCase().includes(query)
+    )
+    .slice(0, 15);
+
+  res.json(results);
+});
+
+
 app.post('/submit-registration', async (req, res) => {
   const data = req.body;
 
@@ -108,58 +196,6 @@ app.post('/submit-registration', async (req, res) => {
   }
 });
 
-async function sendSubmissionEmail(data) {
-  const emailContent = `
-    NEW UK COMPANY REGISTRATION
-    ===========================
-
-    Company Name: ${data.companyName}
-    Contact Email: ${data.email}
-    Phone: ${data.phone || 'N/A'}
-
-    SHARE STRUCTURE:
-    - Number of Shares: ${data.share_count || 'N/A'}
-    - Value per Share: ${data.share_value || 'N/A'}
-
-    DIRECTOR INFORMATION:
-    - Name: ${data.director_name || 'N/A'}
-    - Email: ${data.director_email || 'N/A'}
-    - Date of Birth: ${data.director_dob || 'N/A'}
-
-    REGISTERED OFFICE ADDRESS:
-    ${data.office_address || data.address || 'N/A'}
-
-    PAYMENT:
-    - Amount: £114.00
-    - Payment ID: ${data.payment_id || 'N/A'}
-    
-    Submitted at: ${new Date().toISOString()}
-  `;
-
-  try {
-    await axios.post('https://api.brevo.com/v3/smtp/email', {
-      sender: { 
-        name: 'Company Registration',
-        email: 'anduelhoti59@gmail.com'
-      },
-      to: [
-        { email: 'info@felixclarke.com' },
-        { email: 'anduelhoti59@gmail.com' }
-      ],
-      subject: `New Company Registration: ${data.companyName}`,
-      textContent: emailContent
-    }, {
-      headers: {
-        'api-key': process.env.BREVO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log('Email sent successfully via Brevo API');
-  } catch (error) {
-    console.error('Email sending error:', error.response?.data || error.message);
-    throw error;
-  }
-}
 
 
 app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
