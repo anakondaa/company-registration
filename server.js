@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const express = require('express');
 const axios = require('axios');
@@ -32,13 +32,13 @@ app.post('/check-name', async (req, res) => {
     return res.status(400).json({ error: 'Company name is required' });
   }
 
-  const encodedKey = Buffer.from(\\:\).toString('base64');
-  const searchUrl = \https://api.companieshouse.gov.uk/search/companies?q=\\;
+  const encodedKey = Buffer.from(`${process.env.COMPANIES_HOUSE_API_KEY}:`).toString('base64');
+  const searchUrl = `https://api.companieshouse.gov.uk/search/companies?q=${encodeURIComponent(companyName)}`;
 
   try {
     const response = await axios.get(searchUrl, {
       headers: {
-        'Authorization': \Basic \\
+        'Authorization': `Basic ${encodedKey}`
       }
     });
 
@@ -47,17 +47,17 @@ app.post('/check-name', async (req, res) => {
     const exactMatch = response.data.items.find(company => {
       const companyTitle = company.title.toUpperCase().replace(/\s+/g, ' ');
       return companyTitle === normalizedSearchName || 
-             companyTitle === \\ LIMITED\ ||
-             companyTitle === \\ LTD\;
+             companyTitle === `${normalizedSearchName} LIMITED` ||
+             companyTitle === `${normalizedSearchName} LTD`;
     });
 
     if (exactMatch) {
       const suggestions = [
-        \\ UK\,
-        \\ Solutions\,
-        \\ Group\,
-        \\ Holdings\,
-        \\ Services\
+        `${companyName} UK`,
+        `${companyName} Solutions`,
+        `${companyName} Group`,
+        `${companyName} Holdings`,
+        `${companyName} Services`
       ];
       res.json({ available: false, suggestions: suggestions });
     } else {
@@ -98,13 +98,13 @@ app.post('/submit-registration', async (req, res) => {
     };
     
     fs.appendFileSync('./registrations.json', JSON.stringify(registration) + '\n');
-    console.log('✅ Registration saved to file');
+    console.log('Registration saved to file');
 
     await sendSubmissionEmail(data);
 
     res.json({ success: true, message: 'Registration submitted successfully' });
   } catch (error) {
-    console.error('❌ Error submitting registration:', error);
+    console.error('Error submitting registration:', error);
     res.status(500).json({ error: 'Could not submit registration' });
   }
 });
@@ -120,43 +120,43 @@ async function sendSubmissionEmail(data) {
     }
   });
 
-  const emailContent = \
+  const emailContent = `
     NEW UK COMPANY REGISTRATION
     ===========================
 
-    Company Name: \
-    Contact Email: \
-    Phone: \
+    Company Name: ${data.companyName}
+    Contact Email: ${data.email}
+    Phone: ${data.phone || 'N/A'}
 
     SHARE STRUCTURE:
-    - Number of Shares: \
-    - Value per Share: \
+    - Number of Shares: ${data.share_count || 'N/A'}
+    - Value per Share: ${data.share_value || 'N/A'}
 
     DIRECTOR INFORMATION:
-    - Name: \
-    - Email: \
-    - Date of Birth: \
+    - Name: ${data.director_name || 'N/A'}
+    - Email: ${data.director_email || 'N/A'}
+    - Date of Birth: ${data.director_dob || 'N/A'}
 
     REGISTERED OFFICE ADDRESS:
-    \
+    ${data.office_address || data.address || 'N/A'}
 
     PAYMENT:
     - Amount: £114.00
-    - Payment ID: \
+    - Payment ID: ${data.payment_id || 'N/A'}
     
-    Submitted at: \
-  \;
+    Submitted at: ${new Date().toISOString()}
+  `;
 
   try {
     await transporter.sendMail({
       from: '"Company Registration" <no-reply@hotitours.com>',
       to: "info@felixclarke.com, anduelhoti59@gmail.com",
-      subject: \✅ New Company Registration: \\,
+      subject: `New Company Registration: ${data.companyName}`,
       text: emailContent
     });
-    console.log('✅ Email sent successfully');
+    console.log('Email sent successfully');
   } catch (error) {
-    console.error('❌ Email sending error:', error);
+    console.error('Email sending error:', error);
     throw error;
   }
 }
@@ -168,18 +168,18 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.log('⚠️ Webhook signature verification failed:', err.message);
-    return res.status(400).send(\Webhook Error: \\);
+    console.log('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object;
-    console.log(\✅ Payment for £\ succeeded!\);
+    console.log(`Payment for £${paymentIntent.amount / 100} succeeded!`);
   }
 
   res.json({received: true});
 });
 
 app.listen(PORT, () => {
-  console.log(\🚀 Server running on port \\);
+  console.log(`Server running on port ${PORT}`);
 });
