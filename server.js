@@ -110,16 +110,6 @@ app.post('/submit-registration', async (req, res) => {
 });
 
 async function sendSubmissionEmail(data) {
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
   const emailContent = `
     NEW UK COMPANY REGISTRATION
     ===========================
@@ -148,18 +138,30 @@ const transporter = nodemailer.createTransport({
   `;
 
   try {
-    await transporter.sendMail({
-      from: '"Company Registration" <no-reply@hotitours.com>',
-      to: "info@felixclarke.com, anduelhoti59@gmail.com",
+    await axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { 
+        name: 'Company Registration',
+        email: 'no-reply@hotitours.com'
+      },
+      to: [
+        { email: 'info@felixclarke.com' },
+        { email: 'anduelhoti59@gmail.com' }
+      ],
       subject: `New Company Registration: ${data.companyName}`,
-      text: emailContent
+      textContent: emailContent
+    }, {
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json'
+      }
     });
-    console.log('Email sent successfully');
+    console.log('Email sent successfully via Brevo API');
   } catch (error) {
-    console.error('Email sending error:', error);
+    console.error('Email sending error:', error.response?.data || error.message);
     throw error;
   }
 }
+
 
 app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
