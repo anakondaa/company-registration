@@ -11,12 +11,15 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: [
-    'https://felixclarke.com',
-    'https://www.felixclarke.com',
-    'https://aifuturetech.squarespace.com',
-    'https://www.aifuturetech.squarespace.com'
-  ]
+    'https://hotitours.com',
+    'https://www.hotitours.com',
+    'https://quickcompanyformations.squarespace.com',
+    'https://www.quickcompanyformations.com',
+    'http://localhost:3000'
+  ],
+  credentials: true
 }));
+
 app.use(express.json());
 app.use('/stripe-webhook', express.raw({type: 'application/json'}));
 
